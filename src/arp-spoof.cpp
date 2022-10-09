@@ -84,7 +84,7 @@ bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP) {
 bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP) {
     struct pcap_pkthdr* header;
     const u_char* packet;
-    int res, idx;
+    int res;
 
     static std::map<IPv4, Mac> db;
     std::map<IPv4, Mac>::iterator it;
@@ -229,7 +229,7 @@ void ARPPacketSetting(EthArpPacket& packet,
     packet.arp_.tip_  = htonl(targetIP); 
 }
 
-bool periodAttack(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const std::vector<attackInfo>& victims) {
+bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
     EthArpPacket packet;
     ARPPacketInit(packet);
 
@@ -242,6 +242,8 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const std::v
 
         sleep(5);
     }
+
+    return true;
 }
 
 /*

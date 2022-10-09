@@ -15,7 +15,7 @@ public:
 	IPv4(const std::string r);
 
 	// assign operator
-	IPv4& operator = (const IPv4& r) { this->ip_ = r.ip_; return *this; }
+	// IPv4& operator = (const IPv4& r) { this->ip_ = r.ip_; return *this; }
 
 	// casting operator
 	operator uint32_t() const { return ip_; } // default

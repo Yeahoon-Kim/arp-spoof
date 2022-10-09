@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     }
 
     // send fake ARP packets to each senders in victim pairs
-    thread periodThread(periodAttack, pcap, myMAC, myIP, victims);
+    thread periodThread(periodAttack, pcap, myMAC, victims);
 
     // manage received packets
     thread managerThread(managePackets, pcap, myMAC, victims);

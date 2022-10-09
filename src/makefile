@@ -5,7 +5,7 @@ OBJECTS = ./ip.o ./mac.o ./arphdr.o ./ethhdr.o ./arp-spoof.o ./main.o
 DOBJECTS = ./ip-test.o ./mac-test.o ./arphdr-test.o ./ethhdr-test.o ./arp-spoof-test.o ./main-test.o
 TARGET = ../bin/arp-spoof
 DTARGET = ../bin/arp-spoof-test
-LIBS = -lpcap
+LIBS = -lpcap -pthread
 
 all: $(TARGET)
 debug: $(DTARGET)
