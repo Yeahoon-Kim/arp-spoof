@@ -14,7 +14,7 @@ IPv4::operator std::string() const {
 	std::string str;
 	std::stringstream ss;
 	const int bitmask = 0x000000ff;
-	int i, j;
+	int i;
 
 	for(i = 24; i > 0; i -= 8) ss << ((int)(ip_ >> i) bitand bitmask) << ':';
 	ss << (ip_ bitand bitmask);

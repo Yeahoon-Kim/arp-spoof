@@ -22,6 +22,7 @@
 #include "ip.hpp"
 #include "ethhdr.hpp"
 #include "arphdr.hpp"
+#include "ipv4hdr.hpp"
 
 #pragma pack(push, 1)
 struct EthArpPacket final {
@@ -30,12 +31,10 @@ struct EthArpPacket final {
 };
 #pragma pack(pop)
 
-#pragma pack(push, 1)
-struct flagSet final {
-    uint8_t mainFlag: 4,    // flag from main
-            threadFlag: 4;  // flag from thread, used in Keyboard Interrupt
+struct attackInfo final {
+    Mac sendMAC, targetMAC;
+    IPv4 sendIP, targetIP;
 };
-#pragma pack(pop)
 
 #define CREATE_SOCKET_ERROR_MSG "Error: Error while create socket\n"
 #define IOCTL_ERROR_MSG "Error: Error while ioctl\n"
@@ -46,42 +45,27 @@ struct flagSet final {
 
 #define PCAP_RECEIVE_PACKET_ERROR "Error : Error while pcap_next_ex: "
 
-extern std::vector<volatile flagSet> endFlag;
-extern std::mutex mutex4Flag;
-
-std::map<IPv4, Mac> attackerARPTable;
-std::mutex mutex4Map;
+extern volatile bool isEnd;
 
 bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP);
-bool resolveMACByIP(pcap_t* pcap, 
-                    Mac& MAC, const IPv4& IP, 
-                    const Mac& myMAC, const IPv4& myIP);
-void ARPpacketConstructor(EthArpPacket& packet, 
-                          const Mac& destMAC, const Mac& sourceMAC, 
-                          const Mac& sendMAC, const IPv4& sendIP,
-                          const Mac& targetMAC, const IPv4& targetIP,
-                          const ArpHdr::Mode ARPMode = ArpHdr::Mode::Request);
-
+bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP);
 bool sendPacket(pcap_t* pcap, const EthArpPacket& packet);
 bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength);
 
-bool sendARPPacketRepeatedly(pcap_t* pcap, 
-                            const Mac& destMAC, const Mac& sourceMAC,
-                            const Mac& sendMAC, const IPv4& sendIP, 
-                            const Mac& targetMAC, const IPv4& targetIP, 
-                            const ArpHdr::Mode mode, const int idx);
+bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP);
 
-bool managePackets(pcap_t* pcap, const Mac& myMAC,
-                   const Mac& sendMAC, const IPv4& sendIP, 
-                   const Mac& targetMAC, const IPv4& targetIP, 
-                   const int idx);
+void ARPPacketInit(EthArpPacket& packet);
+void ARPPacketSetting(EthArpPacket& packet, 
+                      const Mac& destMAC, const Mac& sourceMAC,     // for Ethernet
+                      const Mac& sendMAC, const IPv4& sendIP,       // for ARP
+                      const Mac& targetMAC, const IPv4& targetIP);
+
+bool periodAttack(pcap_t* pcap, 
+                  const Mac& myMAC, const IPv4& myIP, 
+                  const std::vector<attackInfo>& victims);
+
+bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims);
 
 void printInfo(const Mac& myMAC, const IPv4& myIP, 
                const Mac& sendMAC, const IPv4& sendIP, 
                const Mac& targetMAC, const IPv4& targetIP);
-
-bool attackARP(pcap_t* pcap, 
-               const Mac& myMAC, const IPv4& myIP,
-               const Mac& sendMAC, const IPv4& sendIP, 
-               const Mac& targetMAC, const IPv4& targetIP,
-               const int idx);
