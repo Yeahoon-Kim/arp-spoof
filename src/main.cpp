@@ -71,14 +71,14 @@ int main(int argc, char* argv[]) {
     }
 
 #ifdef DEBUG
-    cout << "[DEBUG] Successfully open pcap\n"
+    cout << "[DEBUG] Successfully open pcap\n";
 #endif
 
     // Get my IP and MAC address
     if(not getMyInfo(dev, myMAC, myIP)) return 1;
 
 #ifdef DEBUG
-    cout << "[DEBUG] Successfully get local information\n"
+    cout << "[DEBUG] Successfully get local information\n";
 #endif
 
     // get MAC addresses of sender and target
