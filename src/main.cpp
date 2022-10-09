@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
         if(not resolveMACByIP(pcap, targetMAC, targetIP, myMAC, myIP)) return 1;
 
 #ifdef DEBUG
-    cout << "[DEBUG] Successfully get MAC addresses from sender and target\n"
+    cout << "[DEBUG] Successfully get MAC addresses from sender and target\n";
 #endif
 
         victims.push_back({sendMAC, targetMAC, sendIP, targetIP});
