@@ -181,6 +181,10 @@ bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
 bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP) {
     EthArpPacket packet;
 
+#ifdef DEBUG
+    std::cout << "[DEBUG] Successfully get into function 'sendARPRequest'\n";
+#endif
+
     ARPPacketInit(packet);
     ARPPacketSetting(packet, Mac::broadcastMac(), myMAC, myMAC, myIP, Mac::nullMac(), IP);
     packet.arp_.op_ = htons(ArpHdr::Request);
@@ -189,7 +193,7 @@ bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4
     while(not isEnd) {
         if(not sendPacket(pcap, packet)) return false;
 
-        if(not sleep(1)) {
+        if(sleep(1)) {
             std::cerr << SLEEP_ERROR_MSG;
             return false;
         }
@@ -240,7 +244,10 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>&
             if(not sendPacket(pcap, packet)) return false;
         }
 
-        sleep(5);
+        if(sleep(5)) {
+            std::cerr << SLEEP_ERROR_MSG;
+            return false;
+        }
     }
 
     return true;
@@ -327,6 +334,7 @@ void printInfo(const Mac& myMAC, const IPv4& myIP,
                const Mac& sendMAC, const IPv4& sendIP, 
                const Mac& targetMAC, const IPv4& targetIP) {
     std::cout << "========================================\n"; 
+    std::cout << "========================================\n"; 
     std::cout << "[[Attacker's Info]]\n"; 
     std::cout << "[MAC] " << std::string(myMAC) << '\n';
     std::cout << "[IP] " << std::string(myIP) << '\n';
@@ -338,5 +346,6 @@ void printInfo(const Mac& myMAC, const IPv4& myIP,
     std::cout << "[[Target's Info]]\n";
     std::cout << "[MAC] " << std::string(targetMAC) << '\n'; 
     std::cout << "[IP] " << std::string(targetIP) << '\n'; 
+    std::cout << "========================================\n";
     std::cout << "========================================\n";
 }
