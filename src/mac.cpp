@@ -17,8 +17,8 @@ Mac::operator std::string() const {
 	std::string MACAddress;
 	std::stringstream ss;
 
-	for(int i = 0; i < 5; i++) ss << std::setw(2) << std::setfill('0') << (int)mac_[i] << ':';
-	ss << std::setw(2) << std::setfill('0') << (int)mac_[5];
+	for(int i = 0; i < 5; i++) ss << std::setw(2) << std::setfill('0') << std::hex << (int)mac_[i] << ':';
+	ss << std::setw(2) << std::setfill('0') << std::hex << (int)mac_[5];
 
 	return ss.str();
 }
