@@ -145,6 +145,10 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
     sender.join();
     isEnd = false;
 
+#ifdef DEBUG
+    std::cout << "[DEBUG] Successfully get MAC address and join thread\n";
+#endif
+
     return true;
 }
 
@@ -316,6 +320,10 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
                         EthHeaderPtr->smac_ = myMAC;
                         EthHeaderPtr->dmac_ = victim.targetMAC;
 
+#ifdef DEBUG
+                        std::cout << "[DEBUG] Received IP packet\n";
+#endif
+
                         sendPacket(pcap, packet, header->len);
                     }
                     break;
@@ -337,15 +345,15 @@ void printInfo(const Mac& myMAC, const IPv4& myIP,
     std::cout << "========================================\n"; 
     std::cout << "[[Attacker's Info]]\n"; 
     std::cout << "[MAC] " << std::string(myMAC) << '\n';
-    std::cout << "[IP] " << std::string(myIP) << '\n';
+    std::cout << "[IP]  " << std::string(myIP) << '\n';
     std::cout << "========================================\n"; 
     std::cout << "[[Sender's Info]]\n"; 
     std::cout << "[MAC] " << std::string(sendMAC) << '\n'; 
-    std::cout << "[IP] " << std::string(sendIP) << '\n'; 
+    std::cout << "[IP]  " << std::string(sendIP) << '\n'; 
     std::cout << "========================================\n"; 
     std::cout << "[[Target's Info]]\n";
     std::cout << "[MAC] " << std::string(targetMAC) << '\n'; 
-    std::cout << "[IP] " << std::string(targetIP) << '\n'; 
+    std::cout << "[IP]  " << std::string(targetIP) << '\n'; 
     std::cout << "========================================\n";
     std::cout << "========================================\n";
 }
