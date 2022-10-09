@@ -20,11 +20,11 @@ void InterruptHandler(const int signo) {
     if(signo == SIGINT or signo == SIGTERM) {
         if(signo == SIGINT) cout << "\nKeyboard Interrupt\n";
         else cout << "\nTermination request sent to the program\n";
+        cout << "Please wait to turn off the program safely";
 
         // terminate all threads
         isEnd = 0;
 
-        cout << "Please wait to turn off the program safely";
         for(int i = 0; i < 5; i++) {
             cout << '.';
             sleep(1);
