@@ -17,6 +17,10 @@
 #include <pcap.h>               // pcap
 
 #include <thread>               // std::thread
+#include <csignal>              // signal
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
 #include "mac.hpp"
 #include "ip.hpp"
@@ -46,6 +50,8 @@ struct attackInfo final {
 #define PCAP_RECEIVE_PACKET_ERROR "Error : Error while pcap_next_ex: "
 
 extern volatile bool isEnd;
+extern std::mutex m;
+extern std::condition_variable cv;
 
 bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP);
 bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP);

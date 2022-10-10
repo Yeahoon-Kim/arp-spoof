@@ -11,6 +11,9 @@ pcap_t* pcap;
 // for communicating between caller and callee
 volatile bool isEnd;
 
+mutex m;
+condition_variable cv;
+
 vector<struct attackInfo> victims;
 
 /*
@@ -22,15 +25,10 @@ void InterruptHandler(const int signo) {
         else cout << "\nTermination request sent to the program\n";
         cout << "Please wait to turn off the program safely";
 
-        // terminate all threads
-        isEnd = 0;
+        isEnd = true;
 
-        for(int i = 0; i < 5; i++) {
-            cout << '.';
-            sleep(1);
-        }
-
-        cout << "Done!\nHave a nice day :)" << endl;
+        cv.notify_all();
+        usleep(100000);
 
         if(pcap != NULL) pcap_close(pcap);
         
