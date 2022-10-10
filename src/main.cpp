@@ -23,7 +23,6 @@ void InterruptHandler(const int signo) {
     if(signo == SIGINT or signo == SIGTERM) {
         if(signo == SIGINT) cout << "\nKeyboard Interrupt\n";
         else cout << "\nTermination request sent to the program\n";
-        cout << "Please wait to turn off the program safely";
 
         isEnd = true;
 

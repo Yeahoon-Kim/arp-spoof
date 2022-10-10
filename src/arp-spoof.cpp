@@ -1,10 +1,28 @@
+/**
+ * @file arp-spoof.cpp
+ * 
+ * @author apple8718@naver.com
+ * @brief implement API for arp-spoof
+ * @version 0.1
+ * @date 2022-10-11
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
 #include "arp-spoof.hpp"
 
-/*
- * Get Attacker's local MAC address and IP address
+/**
+ * @brief Get Attacker's local MAC address and IP address
  * get MAC address in system direstory
  * get IP address using socket and I/O control
-*/
+ * 
+ * @param interface : user interface want to get information
+ * @param MAC : User MAC address in interface
+ * @param IP : User IP address in interface
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP) {
     int sockfd;
     struct ifreq ifr;
@@ -74,13 +92,19 @@ bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP) {
     return true;
 }
 
-/*
- * resolve MAC address by IP using ARP request
+/**
+ * @brief resolve MAC address by IP using ARP request
  * Use sendPacketARP function to send packet
- * Input  : pcap, IP, myMAC, myIP
- * Output : MAC
- * Add map to check already known MAC address
-*/
+ * 
+ * @param pcap : pcap object for sending/receiving packet
+ * @param MAC : MAC object want to get from IP
+ * @param IP : IP address want to get MAC from
+ * @param myMAC : user MAC address
+ * @param myIP : user IP address
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP) {
     struct pcap_pkthdr* header;
     const u_char* packet;
@@ -152,10 +176,15 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
     return true;
 }
 
-/*
- * Send one packet using pcap
- * Use pcap_sendpacket to send packet ARP packet
-*/
+/**
+ * @brief Send one packet using pcap
+ * 
+ * @param pcap : pcap object for sending packet
+ * @param packet : packet object want to send
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
     if(pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket))) {
         std::cerr << SEND_PACKET_ERROR_MSG;
@@ -166,7 +195,16 @@ bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
 
     return true;
 }
-
+/**
+ * @brief Send one packet using pcap
+ * 
+ * @param pcap : pcap object for sending packet
+ * @param packet : packet object want to send
+ * @param packetLength : packet length
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
     if(pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(packet), packetLength)) {
         std::cerr << SEND_PACKET_ERROR_MSG;
@@ -178,13 +216,19 @@ bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
     return true;
 }
 
-/*
- * Send ARP packet using pcap
+/**
+ * @brief Send ARP packet using pcap
  * send packet repeatedly until end flag turns true
-*/
+ * 
+ * @param pcap : pcap object for sending packet 
+ * @param myMAC : user MAC address
+ * @param myIP : user IP address
+ * @param IP : IP address for getting ARP reply
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP) {
-    signal(SIGINT, SIG_DFL);
-
     EthArpPacket packet;
 
 #ifdef DEBUG
@@ -199,7 +243,7 @@ bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4
     while(not isEnd) {
         if(not sendPacket(pcap, packet)) return false;
 
-        if(sleep(1)) {
+        if(usleep(500000)) {
             std::cerr << SLEEP_ERROR_MSG;
             return false;
         }
@@ -212,6 +256,12 @@ bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4
     return true;
 }
 
+/**
+ * @brief initialize ARP packet for reply
+ * reset op_ to use packet for other operation
+ * 
+ * @param : packet object for set
+ */
 void ARPPacketInit(EthArpPacket& packet) {
     // Set Ethernet header
 	packet.eth_.type_ = htons(EthHdr::Arp);
@@ -224,6 +274,17 @@ void ARPPacketInit(EthArpPacket& packet) {
     packet.arp_.op_   = htons(ArpHdr::Reply);
 }
 
+/**
+ * @brief set packet for sending
+ * 
+ * @param packet : packet object want to set
+ * @param destMAC : destination MAC used in Ethernet header
+ * @param sourceMAC : source MAC used in Ethernet header
+ * @param sendMAC : send MAC used in ARP header
+ * @param sendIP : send IP used in ARP header
+ * @param targetMAC : targetMAC used in ARP header
+ * @param targetIP  : target IP used in ARP header
+ */
 void ARPPacketSetting(EthArpPacket& packet, 
                       const Mac& destMAC, const Mac& sourceMAC,     // for Ethernet
                       const Mac& sendMAC, const IPv4& sendIP,       // for ARP
@@ -239,7 +300,19 @@ void ARPPacketSetting(EthArpPacket& packet,
     packet.arp_.tip_  = htonl(targetIP); 
 }
 
+/**
+ * @brief send fake ARP packet periodically
+ * use conditon_variable to wait isEnd value changing
+ * 
+ * @param pcap : pcap object for sending packet
+ * @param myMAC : user MAC address
+ * @param victims : a set of pairs consist of MAC/IP address of senders and targets
+ * 
+ * @return true : success 
+ * @return false : failure
+ */
 bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
+    // Use condition_variable for listening isEnd value
     std::unique_lock<std::mutex> lk(m);
     auto now = std::chrono::system_clock::now();
 
@@ -259,9 +332,18 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>&
     return true;
 }
 
-/*
- * manage packets from sender and target
-*/
+/**
+ * @brief manage packets from sender and target
+ * if received packet is using ARP, send non-periodical ARP reply attack packet
+ * if received packet is using IP, reply it
+ * 
+ * @param pcap : pcap object for sending/receiving packet
+ * @param myMAC : user MAC address
+ * @param victims : a set of pairs consist of MAC/IP address of senders and targets
+ * 
+ * @return true : success
+ * @return false : failure
+ */
 bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
     struct pcap_pkthdr* header;
     const u_char* packet;
@@ -337,9 +419,16 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
     return true;
 }
 
-/*
- * print information of Attacker, sender, and target
-*/
+/**
+ * @brief print information of Attacker, sender, and target
+ * 
+ * @param myMAC : user MAC address
+ * @param myIP : user IP address
+ * @param sendMAC : sender's MAC adderess
+ * @param sendIP : sender's IP address
+ * @param targetMAC : target's MAC adderess
+ * @param targetIP :target's IP adderess
+ */
 void printInfo(const Mac& myMAC, const IPv4& myIP, 
                const Mac& sendMAC, const IPv4& sendIP, 
                const Mac& targetMAC, const IPv4& targetIP) {

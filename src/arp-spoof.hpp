@@ -1,26 +1,25 @@
 #pragma once
 
-#include <iostream>
-#include <mutex>
-#include <thread>
+#include <iostream>             // std::cout
 #include <fstream>              // std::ifstream
-#include <unistd.h>             // close, sleep
+#include <unistd.h>             // close, sleep, usleep
 #include <sys/socket.h>         // socket, AF_INET
 #include <sys/types.h>          // some historical (BSD) implementations required 
                                 //      this header file, and portable applications are 
                                 //      probably wise to include it.
-#include <arpa/inet.h>          // inet_ntop
+#include <arpa/inet.h>          // inet_ntoa
 #include <sys/ioctl.h>          // ioctl
 #include <net/if.h>             // ifreq
 #include <cstdint>              // uint8_t
 #include <cstring>              // strncpy, memset
 #include <pcap.h>               // pcap
 
+#include <mutex>                // std::mutex
 #include <thread>               // std::thread
+#include <condition_variable>   // std::condition_variable
+#include <chrono>               // std::chrono, std::chrono_literals
+
 #include <csignal>              // signal
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
 
 #include "mac.hpp"
 #include "ip.hpp"
