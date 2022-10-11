@@ -15,6 +15,7 @@ mutex mPcap, mRequest, mNonPeriod;
 condition_variable cvRequest, cvPeriod;
 
 vector<struct attackInfo> victims;
+static Mac* myMACPtr;
 
 /*
  * Keyboard interrupt handler
@@ -28,6 +29,8 @@ void InterruptHandler(const int signo) {
 
         cvRequest.notify_all();
         cvPeriod.notify_all();
+
+        ARPRecover(pcap, *myMACPtr, victims);
 
         if(pcap != NULL) pcap_close(pcap);
         
@@ -73,6 +76,7 @@ int main(int argc, char* argv[]) {
 
     // Get my IP and MAC address
     if(not getMyInfo(dev, myMAC, myIP)) return 1;
+    myMACPtr = &myMAC;
 
 #ifdef DEBUG
     cout << "[DEBUG] Successfully get local information\n";
@@ -105,6 +109,8 @@ int main(int argc, char* argv[]) {
 
     periodThread.join();
     managerThread.join();
+
+    if(not ARPRecover(pcap, myMAC, victims)) return 1;
 
     pcap_close(pcap);
 

@@ -350,12 +350,35 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>&
 
             if(not sendPacket(pcap, packet)) return false;
         }
-    } while(not cvPeriod.wait_for(lk, 5s, [](){ return not isEnd; }));
+    } while(not cvPeriod.wait_for(lk, 5s, [](){ return isEnd; }));
 
 #ifdef DEBUG
         std::cout << "[DEBUG] isEnd = " << (isEnd ? "True" : "False") << '\n';
         std::cout << "[DEBUG] period attack terminated\n";
 #endif
+
+    return true;
+}
+
+/**
+ * @brief send recover packets to victims
+ * 
+ * @param pcap 
+ * @param myMAC 
+ * @param victims 
+ * 
+ * @return true : success
+ * @return false : failure
+ */
+bool ARPRecover(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
+    EthArpPacket packet;
+    ARPPacketInit(packet);
+
+    for(auto a : victims) {
+        ARPPacketSetting(packet, a.sendMAC, myMAC, myMAC, a.targetIP, a.sendMAC, a.sendIP);
+
+        if(not sendPacket(pcap, packet)) return false;
+    }
 
     return true;
 }
