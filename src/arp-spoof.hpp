@@ -48,9 +48,11 @@ struct attackInfo final {
 
 #define PCAP_RECEIVE_PACKET_ERROR "Error : Error while pcap_next_ex: "
 
+using namespace std::chrono_literals;
+
 extern volatile bool isEnd;
-extern std::mutex m;
-extern std::condition_variable cv;
+extern std::mutex mPcap, mRequest, mNonPeriod;
+extern std::condition_variable cvRequest, cvPeriod;
 
 bool getMyInfo(const std::string& interface, Mac& MAC, IPv4& IP);
 bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, const IPv4& myIP);

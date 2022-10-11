@@ -11,8 +11,8 @@ pcap_t* pcap;
 // for communicating between caller and callee
 volatile bool isEnd;
 
-mutex m;
-condition_variable cv;
+mutex mPcap, mRequest, mNonPeriod;
+condition_variable cvRequest, cvPeriod;
 
 vector<struct attackInfo> victims;
 
@@ -26,8 +26,8 @@ void InterruptHandler(const int signo) {
 
         isEnd = true;
 
-        cv.notify_all();
-        usleep(100000);
+        cvRequest.notify_all();
+        cvPeriod.notify_all();
 
         if(pcap != NULL) pcap_close(pcap);
         

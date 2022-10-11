@@ -136,7 +136,9 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
 
     // receive ARP reply from gateway
     while( true ) {
+        mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
+        mPcap.unlock();
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
@@ -186,10 +188,14 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
  * @return false : failure
  */
 bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
-    if(pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket))) {
+    mPcap.lock();
+    int res = pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
+    mPcap.unlock();
+
+    if( res ) {
         std::cerr << SEND_PACKET_ERROR_MSG;
         std::cerr << pcap_geterr(pcap) << std::endl;
-        
+
         return false;
     }
 
@@ -206,7 +212,11 @@ bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
  * @return false : failure
  */
 bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
-    if(pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(packet), packetLength)) {
+    mPcap.lock();
+    int res = pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(packet), packetLength);
+    mPcap.unlock();
+    
+    if( res ) {
         std::cerr << SEND_PACKET_ERROR_MSG;
         std::cerr << pcap_geterr(pcap) << std::endl;
         
@@ -229,6 +239,9 @@ bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
  * @return false : failure
  */
 bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4& IP) {
+    // Use condition_variable for listening isEnd value
+    std::unique_lock<std::mutex> lk(mRequest);
+    
     EthArpPacket packet;
 
 #ifdef DEBUG
@@ -240,14 +253,9 @@ bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4
     packet.arp_.op_ = htons(ArpHdr::Request);
 
     // Send until endFlag goes true
-    while(not isEnd) {
+    do {
         if(not sendPacket(pcap, packet)) return false;
-
-        if(usleep(500000)) {
-            std::cerr << SLEEP_ERROR_MSG;
-            return false;
-        }
-    }
+    } while(not cvRequest.wait_for(lk, 5s, [](){ return not isEnd; }));
 
 #ifdef DEBUG
     std::cout << "[DEBUG] Successfully send packet\n";
@@ -313,21 +321,19 @@ void ARPPacketSetting(EthArpPacket& packet,
  */
 bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
     // Use condition_variable for listening isEnd value
-    std::unique_lock<std::mutex> lk(m);
-    auto now = std::chrono::system_clock::now();
+    std::unique_lock<std::mutex> lk(mNonPeriod);
 
     EthArpPacket packet;
     ARPPacketInit(packet);
-
-    using namespace std::chrono_literals;
 
     // send fake packet to all victim pairs periodically
     do {
         for(auto a : victims) {
             ARPPacketSetting(packet, a.sendMAC, myMAC, myMAC, a.targetIP, a.sendMAC, a.sendIP);
+
             if(not sendPacket(pcap, packet)) return false;
         }
-    } while(not cv.wait_until(lk, now + 5s, [](){ return not isEnd; }));
+    } while(not cvPeriod.wait_for(lk, 5s, [](){ return not isEnd; }));
 
     return true;
 }
@@ -357,7 +363,9 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
     ARPPacketInit(packet4Send);
 
     while(not isEnd) {
+        mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
+        mPcap.unlock();
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
