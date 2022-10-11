@@ -136,15 +136,7 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
 
     // receive ARP reply from gateway
     while( true ) {
-#ifdef DEBUG
-        std::cout << "[DEBUG] 'resolveMACByIP' get lock of mPcap\n";
-#endif
-        mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
-        mPcap.unlock();
-#ifdef DEBUG
-        std::cout << "[DEBUG] 'resolveMACByIP' did unlock of mPcap\n";
-#endif
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
@@ -385,15 +377,7 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
     ARPPacketInit(packet4Send);
 
     while(not isEnd) {
-#ifdef DEBUG
-        std::cout << "[DEBUG] 'managePackets' get lock of mPcap\n";
-#endif
-        mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
-        mPcap.unlock();
-#ifdef DEBUG
-        std::cout << "[DEBUG] 'managePackets' did unlock of mPcap\n";
-#endif
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
