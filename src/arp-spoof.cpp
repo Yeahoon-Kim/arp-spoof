@@ -136,9 +136,15 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
 
     // receive ARP reply from gateway
     while( true ) {
+#ifdef DEBUG
+        std::cout << "[DEBUG] 'resolveMACByIP' get lock of mPcap\n";
+#endif
         mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
         mPcap.unlock();
+#ifdef DEBUG
+        std::cout << "[DEBUG] 'resolveMACByIP' did unlock of mPcap\n";
+#endif
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
@@ -188,9 +194,15 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
  * @return false : failure
  */
 bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
+#ifdef DEBUG
+    std::cout << "[DEBUG] 'sendPacket' get lock of mPcap\n";
+#endif
     mPcap.lock();
     int res = pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
     mPcap.unlock();
+#ifdef DEBUG
+    std::cout << "[DEBUG] 'sendPacket' did unlock of mPcap\n";
+#endif
 
     if( res ) {
         std::cerr << SEND_PACKET_ERROR_MSG;
@@ -212,10 +224,16 @@ bool sendPacket(pcap_t* pcap, const EthArpPacket& packet) {
  * @return false : failure
  */
 bool sendPacket(pcap_t* pcap, const uint8_t* packet, const int packetLength) {
+#ifdef DEBUG
+    std::cout << "[DEBUG] 'sendPacket' get lock of mPcap\n";
+#endif
     mPcap.lock();
     int res = pcap_sendpacket(pcap, reinterpret_cast<const u_char*>(packet), packetLength);
     mPcap.unlock();
-    
+#ifdef DEBUG
+    std::cout << "[DEBUG] 'sendPacket' did unlock of mPcap\n";
+#endif
+
     if( res ) {
         std::cerr << SEND_PACKET_ERROR_MSG;
         std::cerr << pcap_geterr(pcap) << std::endl;
@@ -255,6 +273,10 @@ bool sendARPRequest(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const IPv4
     // Send until endFlag goes true
     do {
         if(not sendPacket(pcap, packet)) return false;
+#ifdef DEBUG
+    std::cout << "[DEBUG] Successfully send packet\n";
+#endif
+
     } while(not cvRequest.wait_for(lk, 5s, [](){ return not isEnd; }));
 
 #ifdef DEBUG
@@ -363,9 +385,15 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
     ARPPacketInit(packet4Send);
 
     while(not isEnd) {
+#ifdef DEBUG
+        std::cout << "[DEBUG] 'managePackets' get lock of mPcap\n";
+#endif
         mPcap.lock();
         res = pcap_next_ex(pcap, &header, &packet);
         mPcap.unlock();
+#ifdef DEBUG
+        std::cout << "[DEBUG] 'managePackets' did unlock of mPcap\n";
+#endif
 
         if (res == 0) continue;
 		// PCAP_ERROR : When interface is down
