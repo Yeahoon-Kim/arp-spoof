@@ -353,6 +353,7 @@ bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>&
     } while(not cvPeriod.wait_for(lk, 5s, [](){ return not isEnd; }));
 
 #ifdef DEBUG
+        std::cout << "[DEBUG] isEnd = " << (isEnd ? "True" : "False") << '\n';
         std::cout << "[DEBUG] period attack terminated\n";
 #endif
 
