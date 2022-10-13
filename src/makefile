@@ -42,3 +42,5 @@ clean:
 	rm -f *.o
 
 .PHONY: all clean
+
+# use cmake for simpler code

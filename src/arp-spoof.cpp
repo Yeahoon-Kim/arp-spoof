@@ -158,6 +158,8 @@ bool resolveMACByIP(pcap_t* pcap, Mac& MAC, const IPv4& IP, const Mac& myMAC, co
            IP            == ARPHeaderPtr->sip()) {
             // signal to sender thread it is no longer need to send packet
             isEnd = true;
+            cvRequest.notify_all();
+            
             break;
         }
     }
@@ -395,7 +397,7 @@ bool ARPRecover(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& v
  * @return true : success
  * @return false : failure
  */
-bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims) {
+bool managePackets(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const std::vector<attackInfo>& victims) {
     struct pcap_pkthdr* header;
     const u_char* packet;
     int res;
@@ -451,7 +453,9 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
                     if(EthHeaderPtr->smac() != victim.sendMAC) break;
 
                     IPv4HeaderPtr = (struct IPv4Hdr*)(packet + sizeof(struct EthHdr));
-                    if(IPv4HeaderPtr->ip_dst == victim.targetIP) {
+                    if(IPv4HeaderPtr->ip_src == victim.sendIP) {
+                        if(IPv4HeaderPtr->ip_dst == myIP) continue;
+
                         EthHeaderPtr->smac_ = myMAC;
                         EthHeaderPtr->dmac_ = victim.targetMAC;
 

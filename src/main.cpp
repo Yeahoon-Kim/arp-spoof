@@ -8,13 +8,13 @@ using namespace std;
 
 pcap_t* pcap;
 
-// for communicating between caller and callee
+// for communicating between caller and callee, atomic in C++
 volatile bool isEnd;
 
 mutex mPcap, mRequest, mNonPeriod;
 condition_variable cvRequest, cvPeriod;
 
-vector<struct attackInfo> victims;
+vector<attackInfo> victims;
 static Mac* myMACPtr;
 
 /*
@@ -104,8 +104,9 @@ int main(int argc, char* argv[]) {
     thread periodThread(periodAttack, pcap, myMAC, victims);
 
     // manage received packets
-    thread managerThread(managePackets, pcap, myMAC, victims);
+    thread managerThread(managePackets, pcap, myMAC, myIP, victims);
 
+    isEnd = true;
     periodThread.join();
     managerThread.join();
 

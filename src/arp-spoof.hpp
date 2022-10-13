@@ -69,7 +69,7 @@ void ARPPacketSetting(EthArpPacket& packet,
 
 bool periodAttack(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims);
 bool ARPRecover(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims);
-bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>& victims);
+bool managePackets(pcap_t* pcap, const Mac& myMAC, const IPv4& myIP, const std::vector<attackInfo>& victims);
 
 void printInfo(const Mac& myMAC, const IPv4& myIP, 
                const Mac& sendMAC, const IPv4& sendIP, 
