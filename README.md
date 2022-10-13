@@ -15,7 +15,3 @@
 * Use thread and mutex for attacking each pairs of sender and target
 * Do not attack CAM table of L2 switch
 * Divide jumbo packet by unit of 1500 bytes and send to relay packet
-
-
-## Reference
-* https://modoocode.com/270

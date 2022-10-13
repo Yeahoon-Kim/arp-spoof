@@ -74,3 +74,4 @@ bool managePackets(pcap_t* pcap, const Mac& myMAC, const std::vector<attackInfo>
 void printInfo(const Mac& myMAC, const IPv4& myIP, 
                const Mac& sendMAC, const IPv4& sendIP, 
                const Mac& targetMAC, const IPv4& targetIP);
+               
