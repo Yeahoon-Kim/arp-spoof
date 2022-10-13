@@ -55,7 +55,6 @@ int main(int argc, char* argv[]) {
     char errbuf[PCAP_ERRBUF_SIZE];
     Mac myMAC, sendMAC, targetMAC;
     IPv4 myIP, sendIP, targetIP;
-    vector<int> indices;
     int i;
 
     dev = argv[1];
