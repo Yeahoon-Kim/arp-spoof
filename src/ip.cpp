@@ -1,13 +1,25 @@
 #include "ip.hpp"
 
+template<char C>
+std::istream& expect(std::istream& in) {
+	if((in >> std::ws).peek() == C) in.ignore();
+	else in.setstate(std::ios_base::failbit);
+
+	return in;
+}
+
 IPv4::IPv4(const std::string r) {
 	uint32_t a, b, c, d;
-	int res = sscanf(r.c_str(), "%u.%u.%u.%u", &a, &b, &c, &d);
-	if (res != SIZE) {
-		fprintf(stderr, "Ip::Ip sscanf return %d r=%s\n", res, r.c_str());
+	std::istringstream iss(r);
+
+	if(iss >> a >> (expect<'.'>) >> b >> (expect<'.'>) >> c >> (expect<'.'>) >> d) {
+		ip_ = (a << 24) bitor (b << 16) bitor (c << 8) bitor d;
 		return;
 	}
-	ip_ = (a << 24) bitor (b << 16) bitor (c << 8) bitor d;
+
+	std::cerr << "Error: Error while converting string to IP" << std::endl;
+	
+	return;
 }
 
 IPv4::operator std::string() const {
