@@ -36,17 +36,12 @@ public:
 	bool operator >= (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) >= 0; }
 	bool operator == (const uint8_t* r) const { return memcmp(mac_, r, SIZE) == 0; }
 
-	void clear() {
-		*this = nullMac();
-	}
+	void clear() { *this = nullMac(); }
 
-	bool isNull() const {
-		return *this == nullMac();
-	}
+	bool isNull() const { return *this == nullMac(); }
 
-	bool isBroadcast() const { // FF:FF:FF:FF:FF:FF
-		return *this == broadcastMac();
-	}
+	// FF:FF:FF:FF:FF:FF
+	bool isBroadcast() const { return *this == broadcastMac(); }
 
 	bool isMulticast() const { // 01:00:5E:0*
 		return mac_[0] == 0x01 and mac_[1] == 0x00 and mac_[2] == 0x5E and (mac_[3] & 0x80) == 0x00;
