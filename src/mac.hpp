@@ -30,8 +30,8 @@ public:
 	// comparison operator
 	bool operator == (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) == 0; }
 	bool operator != (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) != 0; }
-	bool operator < (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) < 0; }
-	bool operator > (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) > 0; }
+	bool operator <  (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) <  0; }
+	bool operator >  (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) >  0; }
 	bool operator <= (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) <= 0; }
 	bool operator >= (const Mac& r) const { return memcmp(mac_, r.mac_, SIZE) >= 0; }
 	bool operator == (const uint8_t* r) const { return memcmp(mac_, r, SIZE) == 0; }
