@@ -3,7 +3,6 @@
 #include <iostream>
 #include <sstream>
 #include <cstdint>
-#include <cstdio>
 #include <regex>
 
 class IPv4 final {
